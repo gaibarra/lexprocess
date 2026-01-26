@@ -68,6 +68,12 @@ DEFAULT_BOLETIN_ORIGINS=SISE,SONORA
 Endpoint para UI:
 - `GET /api/v1/boletines/defaults/` devuelve `default_origins` y `available_origins`.
 
+## Despacho personal (modo abogado solo)
+Si un usuario no tiene despacho, se crea uno personal automáticamente. Para backfill:
+```
+./venv/bin/python lexprocess_backend/manage.py create_personal_despachos
+```
+
 ## Notificaciones por Correo (Gmail SMTP)
 Usa una App Password de Gmail y define en `.env`:
 ```

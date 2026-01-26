@@ -23,7 +23,7 @@ BLUE=\033[0;34m
 YELLOW=\033[1;33m
 NC=\033[0m
 
-.PHONY: help setup venv backend-install frontend-install install upgrade deps freeze env frontend-env migrate makemigrations superuser runserver frontend dev all test backend-test frontend-test coverage backend-coverage frontend-coverage lint format shell celery worker beat stopcelery build build-frontend build-backend clean clean-py clean-node resetdb data demo
+.PHONY: help setup venv backend-install frontend-install install upgrade deps freeze env frontend-env migrate makemigrations superuser runserver frontend dev all test backend-test frontend-test coverage backend-coverage frontend-coverage lint format shell celery worker beat stopcelery build build-frontend build-backend clean clean-py clean-node resetdb data demo personal-despachos
 
 help:
 	@echo "${BLUE}Targets principales:${NC}"
@@ -166,3 +166,6 @@ env:
 demo:
 	@if [ -z "$(FIXTURE)" ]; then echo "Especifica FIXTURE=<archivo.json>" && exit 1; fi
 	$(MANAGE) loaddata $(FIXTURE)
+
+personal-despachos:
+	$(MANAGE) create_personal_despachos

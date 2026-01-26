@@ -488,7 +488,7 @@ class AuthSessionView(APIView):
 
         # Serializamos datos para widgets (los 5 más próximos/recientes)
         plazos_data = PlazoSerializer(plazos_qs[:5], many=True).data
-        docs_data = DocumentoSerializer(qs_docs.order_by('-fecha_creacion')[:5], many=True).data
+        docs_data = DocumentoSerializer(qs_docs.order_by('-fecha_carga')[:5], many=True).data
 
         metrics = {
             'casos_total': qs_casos.count(),

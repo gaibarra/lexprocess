@@ -6,11 +6,19 @@ import alerts from '../../lib/alerts';
 
 function NewCaseModal({ open, onClose }) {
   const loadCases = useAuthStore(s => s.loadCases);
+  const user = useAuthStore(s => s.user);
+  const isStaff = Boolean(user?.permissions?.is_staff);
   const [form, setForm] = useState({ nombre_caso: '', numero_expediente: '', cliente_id: null, juzgado_tribunal: '', tipo_proceso: 'OTRO', descripcion_breve: '', rol_cliente: '', despacho_id: '' });
   const [despachos, setDespachos] = useState([]);
   const [despachosLoading, setDespachosLoading] = useState(false);
   const [despachosError, setDespachosError] = useState(null);
   React.useEffect(() => {
+    if (!isStaff) {
+      setDespachos([]);
+      setDespachosError(null);
+      setDespachosLoading(false);
+      return;
+    }
     const loadDespachos = async () => {
       try {
         setDespachosLoading(true); setDespachosError(null);
@@ -21,7 +29,12 @@ function NewCaseModal({ open, onClose }) {
       finally { setDespachosLoading(false); }
     };
     loadDespachos();
-  }, []);
+  }, [isStaff]);
+  React.useEffect(() => {
+    if (!isStaff && user?.profile?.despacho_id) {
+      setForm(f => ({ ...f, despacho_id: user.profile.despacho_id }));
+    }
+  }, [isStaff, user]);
   const [submitting, setSubmitting] = useState(false);
   const refreshSessionMetrics = useAuthStore(s => s.refreshSessionMetrics);
 
@@ -116,7 +129,11 @@ function NewCaseModal({ open, onClose }) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Despacho</label>
-            {despachosLoading ? <p className="text-xs text-gray-500 mt-1">Cargando despachos…</p> : (
+            {!isStaff ? (
+              <p className="text-xs text-gray-600 mt-1">Despacho personal</p>
+            ) : despachosLoading ? (
+              <p className="text-xs text-gray-500 mt-1">Cargando despachos…</p>
+            ) : (
               <select
                 name="despacho_id"
                 value={form.despacho_id}
@@ -127,7 +144,7 @@ function NewCaseModal({ open, onClose }) {
                 {despachos.map(d => <option key={d.id} value={d.id}>{d.nombre || d.nombre_fantasia || d.razon_social || `Despacho ${d.id}`}</option>)}
               </select>
             )}
-            {despachosError && <p className="text-xs text-red-600 mt-1">{despachosError}</p>}
+            {isStaff && despachosError && <p className="text-xs text-red-600 mt-1">{despachosError}</p>}
           </div>
           <ClientSelectCreate value={form.cliente_id} currentDespachoId={form.despacho_id} onChange={(val) => setForm(f => ({ ...f, cliente_id: val }))} />
           <div>

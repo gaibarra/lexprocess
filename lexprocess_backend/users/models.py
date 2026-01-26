@@ -8,6 +8,7 @@ from despachos.models import Despacho # Importar Despacho
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.db import transaction
 
 
 class RolUsuario(models.TextChoices):
@@ -33,6 +34,26 @@ class UserProfile(models.Model):
 # Opcional: Crear UserProfile automáticamente cuando se crea un User
 @receiver(post_save, sender=User)
 def create_or_update_user_profile(sender, instance, created, **kwargs):
-    if created:
-        UserProfile.objects.create(user=instance)
-    # instance.profile.save() # Descomentar si tienes lógica que necesite guardarse en cada update del User
+    def ensure_personal_despacho(profile):
+        if profile.despacho_id:
+            return
+        base_name = f"Despacho de {instance.username}"
+        name = base_name
+        counter = 1
+        while Despacho.objects.filter(nombre=name).exists():
+            counter += 1
+            name = f"{base_name} ({counter})"
+        despacho = Despacho.objects.create(nombre=name)
+        profile.despacho = despacho
+        profile.save(update_fields=['despacho'])
+
+    with transaction.atomic():
+        if created:
+            profile = UserProfile.objects.create(user=instance)
+            ensure_personal_despacho(profile)
+        else:
+            try:
+                profile = instance.profile
+            except UserProfile.DoesNotExist:
+                profile = UserProfile.objects.create(user=instance)
+            ensure_personal_despacho(profile)
