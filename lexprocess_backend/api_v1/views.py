@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from django.contrib.auth.models import User
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from documentos.tasks import extract_text_from_document # <-- IMPORTANTE: Importar la tarea
 from django.utils import timezone
@@ -26,7 +27,7 @@ from .serializers import (
 )
 from calendario_legal.models import Jurisdiccion, DiaInhabil
 from workflows_procesales.models import WorkflowPlantilla, WorkflowInstancia, HitoProcesal, EtapaPlantilla
-from boletines_monitor.models import NotificacionBoletin, PublicacionFiltro
+from boletines_monitor.models import NotificacionBoletin, PublicacionFiltro, OrigenBoletin
 from calendario_legal.services import TerminoLegalService
 from ia_integration.services import (
     clasificar_documento,
@@ -390,6 +391,31 @@ class NotificacionBoletinViewSet(viewsets.ModelViewSet):
         from boletines_monitor.tasks import sync_boletines_task
         sync_boletines_task.delay()
         return Response({"status": "Sincronización iniciada en segundo plano."}, status=status.HTTP_202_ACCEPTED)
+
+class BoletinDefaultsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        available = [
+            {"value": choice[0], "label": choice[1]}
+            for choice in OrigenBoletin.choices
+        ]
+        available_sorted = sorted(available, key=lambda item: item["label"])
+        valid = {choice[0] for choice in OrigenBoletin.choices}
+        defaults = [origin for origin in settings.DEFAULT_BOLETIN_ORIGINS if origin in valid]
+        if not defaults:
+            defaults = [OrigenBoletin.SISE, OrigenBoletin.SONORA]
+        defaults_sorted = sorted(
+            defaults,
+            key=lambda origin: next(
+                (label for value, label in OrigenBoletin.choices if value == origin),
+                origin,
+            )
+        )
+        return Response({
+            "default_origins": defaults_sorted,
+            "available_origins": available_sorted,
+        })
 
 # --- Vistas de Autenticación (No son ViewSets) ---
 

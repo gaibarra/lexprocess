@@ -123,7 +123,7 @@ class Command(BaseCommand):
             resumen_acuerdo="Se señala fecha para audiencia de vinculación a proceso para el próximo martes.",
             defaults={
                 'fecha_publicacion': timezone.now().date(),
-                'origen': OrigenBoletin.CDMX,
+                'origen': OrigenBoletin.SONORA,
                 'sugerencia_workflow_paso': 'Vinculación a Proceso',
                 'sugerencia_plazo_dias': 1,
                 'explicacion_ia': 'Audiencia inminente. Preparar argumentos de defensa.'

@@ -28,6 +28,11 @@ Entradas principales:
 | CORS_ALLOWED_ORIGINS | Orígenes permitidos en prod | Sí |
 | DB_NAME / DB_USER / DB_PASSWORD / DB_HOST / DB_PORT | Postgres | Sí |
 | CELERY_BROKER_URL / CELERY_RESULT_BACKEND | Redis u otro broker | Sí |
+| DEFAULT_BOLETIN_ORIGINS | Orígenes por defecto (CSV) | No |
+| EMAIL_HOST_USER / EMAIL_HOST_PASSWORD | Gmail SMTP (App Password) | Sí (si email) |
+| EMAIL_HOST / EMAIL_PORT / EMAIL_USE_TLS | SMTP config | Sí (si email) |
+| DEFAULT_FROM_EMAIL | Remitente | No |
+| CHANNEL_REDIS_URL | Redis para WebSocket | No (usa memoria en dev) |
 | OPENAI_API_KEY / DEEPSEEK_API_KEY / PERPLEXITY_API_KEY | Integraciones IA | Según funcionalidad |
 
 ## CORS en Producción
@@ -53,6 +58,30 @@ Configurado logger root y específicos (`django`, `celery`, `ia_integration`) co
 
 ## Endpoint de Salud
 - `GET /api/health/` devuelve estado `database`, `redis`, `app`. 200 si todo OK, 503 si algo falla.
+
+## Boletines Judiciales (Default)
+Configura los orígenes por defecto con la variable `DEFAULT_BOLETIN_ORIGINS` (lista separada por comas).
+Ejemplo en `.env`:
+```
+DEFAULT_BOLETIN_ORIGINS=SISE,SONORA
+```
+Endpoint para UI:
+- `GET /api/v1/boletines/defaults/` devuelve `default_origins` y `available_origins`.
+
+## Notificaciones por Correo (Gmail SMTP)
+Usa una App Password de Gmail y define en `.env`:
+```
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=tu_correo@gmail.com
+EMAIL_HOST_PASSWORD=tu_app_password
+DEFAULT_FROM_EMAIL=LexProcess <tu_correo@gmail.com>
+```
+
+## Notificaciones en Tiempo Real (WebSocket)
+- Endpoint WS: `ws(s)://<host>/ws/boletines/?token=<access_jwt>`
+- Redis opcional para Channels: `CHANNEL_REDIS_URL=redis://localhost:6379/1`
 
 ## Tareas de Extracción
 La tarea Celery `extract_text_from_document` ahora soporta: `.pdf`, `.docx`, `.txt`.

@@ -2,8 +2,14 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
+const normalizeApiBaseUrl = (value) => {
+  if (!value) return '/api/v1';
+  const trimmed = value.endsWith('/') ? value.slice(0, -1) : value;
+  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
+};
+
 const apiClient = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL,
+  baseURL: normalizeApiBaseUrl(process.env.REACT_APP_API_BASE_URL),
   headers: {
     'Content-Type': 'application/json',
   },

@@ -6,6 +6,7 @@ class OrigenBoletin(models.TextChoices):
     SISE = 'SISE', 'PJF - SISE (Federal)'
     CDMX = 'CDMX', 'TSJCDMX (Local)'
     ESTADO_MEXICO = 'EDOMEX', 'PJEDOMEX (Local)'
+    SONORA = 'SONORA', 'PJSON (Local)'
 
 class PublicacionFiltro(models.Model):
     """Define qué expedientes estamos monitoreando por despacho/usuario."""

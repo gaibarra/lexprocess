@@ -7,7 +7,7 @@ from .views import (
     ParteProcesalViewSet, DocumentoViewSet, PlazoViewSet, LogoutView, AuthSessionView,
     JurisdiccionViewSet, DiaInhabilViewSet, TerminoLegalView,
     WorkflowPlantillaViewSet, WorkflowInstanciaViewSet, HitoProcesalViewSet,
-    PublicacionFiltroViewSet, NotificacionBoletinViewSet
+    PublicacionFiltroViewSet, NotificacionBoletinViewSet, BoletinDefaultsView
 )
 # Importa la vista de logout desde jwt_views.py
 from .jwt_views import LogoutView
@@ -34,5 +34,6 @@ urlpatterns = [
     path('', include(router.urls)),
     path('auth/logout/', LogoutView.as_view(), name='auth_logout'), # Endpoint de Logout
     path('auth/session/', AuthSessionView.as_view(), name='auth_session'),
+    path('boletines/defaults/', BoletinDefaultsView.as_view(), name='boletines_defaults'),
     path('calendario/calcular-vencimiento/', TerminoLegalView.as_view(), name='calcular_vencimiento'),
 ]
