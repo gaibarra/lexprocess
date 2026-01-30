@@ -10,6 +10,7 @@ const normalizeApiBaseUrl = (value) => {
 
 const apiClient = axios.create({
   baseURL: normalizeApiBaseUrl(process.env.REACT_APP_API_BASE_URL),
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -47,75 +48,80 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
     if (error.response && error.response.status === 401) {
-      // Si el 401 proviene directamente del endpoint de refresh, cortar y forzar logout
+      // Si el 401 proviene del endpoint de refresh, logout inmediato
       if (originalRequest?.url && originalRequest.url.includes('/token/refresh/')) {
-        try { useAuthStore.getState().logout(); } catch(_) {}
-        return Promise.reject(error);
-      }
-      if (!originalRequest._retry) {
-      originalRequest._retry = true;
-      const store = useAuthStore.getState();
-      const { refreshToken, logout } = store;
-      if (!refreshToken) {
-        logout();
-        return Promise.reject(error);
-      }
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          pendingQueue.push({ resolve, reject });
-        }).then((token) => {
-          originalRequest.headers.Authorization = 'Bearer ' + token;
-          return apiClient(originalRequest);
-        });
-      }
-      isRefreshing = true;
-      try {
-        // IMPORTANTE: Antes se usaba axios.post('/token/refresh/') sin baseURL.
-        // Eso hace la petición contra el origen del frontend (p.ej. http://localhost:3000/token/refresh/)
-        // en lugar del backend (http://127.0.0.1:8000/api/v1/token/refresh/), provocando 404/401 y logout.
-        // Construimos explícitamente la URL usando el baseURL configurado en apiClient.
-        const baseURL = apiClient.defaults.baseURL || '';
-        const normalizedBase = baseURL?.endsWith('/') ? baseURL.slice(0, -1) : baseURL;
-        // Si tu backend realmente expone el refresh bajo /auth/token/refresh/ ajusta la línea siguiente:
-        const refreshPath = '/token/refresh/'; // Cambiar a '/auth/token/refresh/' si corresponde.
-        const resp = await axios.post(normalizedBase + refreshPath, { refresh: refreshToken });
-        const newAccess = resp.data.access;
-        const maybeNewRefresh = resp.data.refresh; // algunos backends rotan refresh
-        const storeAfter = useAuthStore.getState();
-        storeAfter.setAccessToken(newAccess);
-        if (maybeNewRefresh) {
-          // Actualizamos el refreshToken en el store directamente (no hay setter dedicado)
-          useAuthStore.setState({ refreshToken: maybeNewRefresh });
-        }
-        // Re-programar refresh automático calculando exp del nuevo access
+        console.error('[Axios] ❌ Refresh token inválido/expirado');
         try {
-          const payload = JSON.parse(atob(newAccess.split('.')[1]));
-          if (payload?.exp) {
-            const nowSec = Date.now() / 1000;
-            const expiresIn = payload.exp - nowSec;
-            if (expiresIn > 0 && storeAfter.scheduleRefresh) {
-              storeAfter.scheduleRefresh(expiresIn);
-            }
-          }
-        } catch (_) { /* silenciosamente ignorar fallo de decode */ }
-        processQueue(null, newAccess);
-        originalRequest.headers.Authorization = 'Bearer ' + newAccess;
-        return apiClient(originalRequest);
-      } catch (refreshErr) {
-        processQueue(refreshErr, null);
-        logout();
-        return Promise.reject(refreshErr);
-      } finally {
-        isRefreshing = false;
+          useAuthStore.getState().logout();
+        } catch (_) { }
+        return Promise.reject(error);
       }
+
+      // Evitar loops de retry
+      if (!originalRequest._retry) {
+        originalRequest._retry = true;
+        const store = useAuthStore.getState();
+        const { refreshToken, logout, updateTokens } = store;
+
+        if (!refreshToken) {
+          console.warn('[Axios] ⚠️ No hay refresh token, cerrando sesión');
+          logout();
+          return Promise.reject(error);
+        }
+
+        // Manejar cola de peticiones mientras se refresca
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            pendingQueue.push({ resolve, reject });
+          }).then((token) => {
+            originalRequest.headers.Authorization = 'Bearer ' + token;
+            return apiClient(originalRequest);
+          });
+        }
+
+        isRefreshing = true;
+
+        try {
+          console.log('[Axios] 🔄 Intentando refrescar token (401 detectado)');
+
+          // Hacer la petición de refresh
+          const baseURL = apiClient.defaults.baseURL || '';
+          const normalizedBase = baseURL?.endsWith('/') ? baseURL.slice(0, -1) : baseURL;
+          const refreshPath = '/token/refresh/';
+
+          const resp = await axios.post(normalizedBase + refreshPath, { refresh: refreshToken });
+          const newAccess = resp.data.access;
+          const newRefresh = resp.data.refresh; // Viene si ROTATE_REFRESH_TOKENS=True
+
+          // ✅ USAR MÉTODO DEDICADO DEL STORE
+          updateTokens(newAccess, newRefresh);
+
+          console.log('[Axios] ✅ Token refrescado por interceptor');
+
+          // Procesar cola de peticiones pendientes
+          processQueue(null, newAccess);
+
+          // Reintentar petición original
+          originalRequest.headers.Authorization = 'Bearer ' + newAccess;
+          return apiClient(originalRequest);
+
+        } catch (refreshErr) {
+          console.error('[Axios] ❌ Fallo al refrescar token en interceptor:', refreshErr);
+
+          processQueue(refreshErr, null);
+          logout();
+          return Promise.reject(refreshErr);
+
+        } finally {
+          isRefreshing = false;
+        }
       }
     }
+
     return Promise.reject(error);
   }
 );
-
-// Aquí se podría añadir un interceptor de respuestas para manejar
-// el refresco automático de tokens si se desea un comportamiento más avanzado.
 
 export default apiClient;

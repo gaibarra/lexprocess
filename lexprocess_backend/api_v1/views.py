@@ -41,6 +41,7 @@ from despachos.models import Despacho
 from casos.models import Caso, Cliente, ParteProcesal
 from documentos.models import Documento, TipoDocumentoChoices
 from agenda_plazos.models import Plazo
+from users.models import UserProfile
 
 
 # --- ViewSets ---
@@ -419,23 +420,6 @@ class BoletinDefaultsView(APIView):
 
 # --- Vistas de Autenticación (No son ViewSets) ---
 
-class LogoutView(APIView):
-    """Vista para invalidar un refresh token (cerrar sesión)."""
-    permission_classes = (IsAuthenticated,)
-
-    def post(self, request):
-        try:
-            refresh_token = request.data.get("refresh")
-            if refresh_token is None:
-                return Response({"detail": "Refresh token is required."}, status=status.HTTP_400_BAD_REQUEST)
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-            return Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)
-        except TokenError:
-            return Response({"detail": "Token is invalid or expired."}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({"detail": "An error occurred during logout."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 class AuthSessionView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -449,6 +433,10 @@ class AuthSessionView(APIView):
                 'rol': profile.rol,
                 'despacho_id': profile.despacho.id if profile.despacho else None,
                 'despacho_nombre': profile.despacho.nombre if profile.despacho else None,
+                'preferred_jurisdiccion': {
+                    'id': str(profile.preferred_jurisdiccion.id),
+                    'nombre': profile.preferred_jurisdiccion.nombre,
+                } if profile.preferred_jurisdiccion else None,
             }
         user_data = {
             'id': user.id,
@@ -503,3 +491,21 @@ class AuthSessionView(APIView):
             }
         }
         return Response({'user': user_data, 'metrics': metrics})
+
+    def patch(self, request):
+        user = request.user
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+
+        preferred_id = request.data.get('preferred_jurisdiccion_id', None)
+        if preferred_id is not None:
+            if preferred_id in ['', None]:
+                profile.preferred_jurisdiccion = None
+            else:
+                try:
+                    jurisdiccion = Jurisdiccion.objects.get(pk=preferred_id)
+                except Jurisdiccion.DoesNotExist:
+                    return Response({"error": "Jurisdicción no válida."}, status=status.HTTP_400_BAD_REQUEST)
+                profile.preferred_jurisdiccion = jurisdiccion
+
+        profile.save()
+        return self.get(request)

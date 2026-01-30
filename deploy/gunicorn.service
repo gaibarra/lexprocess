@@ -1,0 +1,22 @@
+[Unit]
+Description=Gunicorn for lexprocess (ASGI)
+Requires=gunicorn-lexprocess.socket
+After=network.target
+
+[Service]
+User=lexprocess
+Group=www-data
+WorkingDirectory=/srv/lexprocess/lexprocess_backend
+EnvironmentFile=/etc/lexprocess/lexprocess.env
+ExecStart=/srv/lexprocess/lexprocess_backend/venv/bin/gunicorn \
+  lexprocess_backend.asgi:application \
+  --workers 3 \
+  --worker-class uvicorn.workers.UvicornWorker \
+  --bind unix:/run/lexprocess/gunicorn.sock \
+  --access-logfile - \
+  --error-logfile -
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

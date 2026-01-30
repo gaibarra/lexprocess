@@ -102,7 +102,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
@@ -124,12 +123,18 @@ DEFAULT_BOLETIN_ORIGINS = [
     if origin.strip()
 ]
 
+# Configuración optimizada de JWT
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    # Tiempos de vida ajustados para mejor UX sin sacrificar seguridad
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),  # 30 min (reducido de 60)
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # 7 días (incrementado de 1)
+    
+    # Token rotation activada para mayor seguridad
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': True,
+    
+    # Configuración de algoritmo y claims
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',),
@@ -138,6 +143,9 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id',
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_TYPE_CLAIM': 'token_type',
+    
+    # Configuración de blacklist
+    'TOKEN_BLACKLIST_ENABLED': True,
 }
 
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')

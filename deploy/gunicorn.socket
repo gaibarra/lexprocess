@@ -1,0 +1,13 @@
+[Unit]
+Description=Gunicorn socket for lexprocess
+
+[Socket]
+ListenStream=/run/lexprocess/gunicorn.sock
+SocketUser=www-data
+SocketGroup=www-data
+SocketMode=0660
+RuntimeDirectory=lexprocess
+RuntimeDirectoryMode=0755
+
+[Install]
+WantedBy=sockets.target

@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 # Importa ViewSets desde views.py
 from .views import (
     UserViewSet, DespachoViewSet, ClienteViewSet, CasoViewSet,
-    ParteProcesalViewSet, DocumentoViewSet, PlazoViewSet, LogoutView, AuthSessionView,
+    ParteProcesalViewSet, DocumentoViewSet, PlazoViewSet, AuthSessionView,
     JurisdiccionViewSet, DiaInhabilViewSet, TerminoLegalView,
     WorkflowPlantillaViewSet, WorkflowInstanciaViewSet, HitoProcesalViewSet,
     PublicacionFiltroViewSet, NotificacionBoletinViewSet, BoletinDefaultsView

@@ -10,40 +10,47 @@ const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
 const CaseDetailPage = React.lazy(() => import('./pages/CaseDetailPage'));
 
 function App() {
-  // Usamos una referencia para asegurarnos que la inicialización solo corra una vez
+  // Referencia para prevenir doble inicialización en StrictMode
   const initHasRun = useRef(false);
 
   useEffect(() => {
-    // Si ya se ejecutó, no hacemos nada. Esto previene dobles ejecuciones en StrictMode.
     if (initHasRun.current) {
       return;
     }
     initHasRun.current = true;
 
-    // Obtenemos el estado y las acciones IMPERATIVAMENTE usando getState()
-    // Esto no crea una suscripción de React y rompe el bucle de renderizado.
-    const { isAuthenticated, refreshToken, setAccessToken, logout, setInitialized } = useAuthStore.getState();
+    // Obtener estado y acciones imperativamente (sin suscripción React)
+    const { isAuthenticated, refreshToken, updateTokens, logout, setInitialized } = useAuthStore.getState();
 
     const initializeApp = async () => {
       if (isAuthenticated && refreshToken) {
         try {
-          // Intentamos refrescar el token
+          console.log('[App] 🔄 Inicializando con refresh token existente...');
+
+          // Intentar refrescar el access token
           const response = await apiClient.post('/token/refresh/', { refresh: refreshToken });
-          // Si tiene éxito, actualizamos el store
-          setAccessToken(response.data.access);
+          const newAccess = response.data.access;
+          const newRefresh = response.data.refresh; // Viene si hay token rotation
+
+          // ✅ USAR MÉTODO DEDICADO (maneja rotation + persistencia)
+          updateTokens(newAccess, newRefresh);
+
+          console.log('[App] ✅ Sesión restaurada correctamente');
+
         } catch (error) {
-          // Si falla, cerramos la sesión
-          console.error("Sesión inválida, cerrando sesión.", error);
+          console.error('[App] ❌ Sesión inválida, cerrando sesión:', error);
           logout();
+        } finally {
+          setInitialized();
         }
       } else {
-        // Si no hay sesión, simplemente terminamos la carga
+        console.log('[App] ℹ️ No hay sesión activa');
         setInitialized();
       }
     };
 
     initializeApp();
-  }, []); // El array vacío es CRÍTICO para que solo se ejecute una vez.
+  }, []); // Array vacío crítico para ejecutar solo una vez
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
